@@ -9,6 +9,7 @@ rm(list=ls(all=TRUE))
 library(shiny)
 library(RColorBrewer)
 library(lme4)
+library(plotly)
 # Define server logic required to draw a histogram
 
 shinyServer(function(input, output, clientData, session) {
@@ -266,21 +267,29 @@ analysis <- reactive({
   ))
 })
 
-output$distPlot <- renderPlot({
-	if (is.null(input$pct.decline.yr)){
-	return()}
-
-  par(mar = c(3, 3, 2, 1))
-  par(xaxs="i",  yaxs="i") # OPTION ENSURES X AND Y AXES MEET AT 0,0
-
-	#Draw the time series
-	color.vector=brewer.pal(analysis()$n.reps ,"Blues")
-	interaction.plot(analysis()$sim.data$month, analysis()$sim.data$i, analysis()$sim.data$cases, axes=FALSE, bty="l",col=color.vector,ylab="Cases", xlab="time(months)", legend=FALSE, main="",ylim=c(0,max(analysis()$sim.data$cases)) ) 
-	axis(side=1, at=c(1,12,24,36,48,60,72,84,96,108,120,132,144) ,col="darkgray" )
-	ymaxval<- max(analysis()$sim.data$cases)
-	yticks<- round(c( 0, ymaxval*0.1,  ymaxval*0.2,  ymaxval*0.3, ymaxval*0.4,  ymaxval*0.5,  ymaxval*0.6,  ymaxval*0.7,  ymaxval*0.8,  ymaxval*0.9,  ymaxval*1.0, ymaxval*1.1))
-	axis(side=2, at=yticks ,col="darkgray" )
-	title(main="", xlab="time(months)" , ylab="Cases", xpd=NA)
+output$distPlot <- renderPlotly({
+  if (is.null(input$pct.decline.yr)){
+	  return()
+  }
+  
+  sim.data = analysis()$sim.data
+  ymaxval<- max(sim.data$cases)
+  
+  plot_ly(sim.data, x = ~month, y = ~cases) %>%
+    group_by(i) %>%
+    add_lines(line=list(width=0.1)) %>%
+    layout(
+      xaxis=list(
+        tick0=0,
+        dtick=12,
+        title="Time (months)"
+      ),
+      yaxis=list(
+        range=c(0, round(ymaxval * 1.1)),
+        nticks=11,
+        title="Cases"
+      )
+    )
 })
 
 output$evalPlot <- renderPlot({

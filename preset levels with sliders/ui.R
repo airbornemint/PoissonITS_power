@@ -1,4 +1,5 @@
 library(shiny)
+library(plotly)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
@@ -15,7 +16,7 @@ shinyUI(fluidPage(
 
 # Show a plot of the generated distribution
 	fluidRow(
-	  column(6, plotOutput("distPlot", height = "300px")),
+	  column(6, plotlyOutput("distPlot", height = "300px")),
 	  column(6, plotOutput("evalPlot", height = "300px"))
 	),
 
