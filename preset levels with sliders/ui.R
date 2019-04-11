@@ -14,9 +14,11 @@ shinyUI(fluidPage(
   ),
 
 # Show a plot of the generated distribution
-	
-      plotOutput("distPlot",height = "300px"),
-    
+	fluidRow(
+	  column(6, plotOutput("distPlot", height = "300px")),
+	  column(6, plotOutput("evalPlot", height = "300px"))
+	),
+
   hr(),
 
   fluidRow(
