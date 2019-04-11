@@ -217,7 +217,7 @@ output$distPlot <- renderPlot({
 			#GENERATE THE SIMULATED TIME SERIES
 			d2$exp.case.mean.no.int<-exp( season.component + log(irr.sec.trend.yr)/12*t +  d2$obs.noise + d2$changslope*vax.change.coeff)
      			beta0 <- log(mean.cases) - mean(log(d2$exp.case.mean.no.int)) #calculate intercept as function of mena cases and model components
-			d2$exp.case.mean.no.int <- exp(beta0)* d2$exp.case.mean.no.int #full model with intercept
+			d2$exp.case.mean <- exp(beta0)* d2$exp.case.mean.no.int #full model with intercept
 			d2$exp.case <-rpois(length(t),d2$exp.case.mean)  #The observed number of cases is drawn from some true mean
 			d2$TID <-as.factor(t)
 
