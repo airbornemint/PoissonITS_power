@@ -4,6 +4,8 @@ library(plotly)
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
 
+  tags$head(includeScript('sliders.js', 'type' = 'text/javascript')),
+  
   # Application title
   titlePanel("Vaccine Impact Confidence Evaluation (VICE)"),
  fluidRow(
@@ -32,12 +34,12 @@ shinyUI(fluidPage(
                   "Years of Data from the pre-vaccine period:",
                   min = 1,
                   max = 10,
-                  value = 2),
+                  value = 2) %>% sliderValue(live=FALSE),
   sliderInput("years.post.pcv.data",
                   "Years of data from the post-vaccine period:",
                   min = 1,
                   max = 10,
-                  value = 3),
+                  value = 3) %>% sliderValue(live=FALSE),
    uiOutput("ui.pct.decline")
    ),
 
@@ -46,7 +48,7 @@ shinyUI(fluidPage(
                   "Trend unrelated to vaccine (%/year):",
                   min = -30,
                   max = 30,
-                  value = -10),
+                  value = -10) %>% sliderValue(live=TRUE, delayed=TRUE),
   uiOutput("ui.season.amp"),
   uiOutput("ui.n.cases")
   ),

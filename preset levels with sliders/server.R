@@ -29,19 +29,19 @@ output$ui.pct.decline<- renderUI({
                   "True vaccine-associated change (%/year):",
                   min = -60,
                   max = 10,
-                  value = -30.15),
+                  value = -30.15) %>% sliderValue(live=TRUE, delayed=TRUE),
 	"Pneumococcal pneumonia (any serotype)"=
 	   sliderInput("pct.decline.yr",
                   "True vaccine-associated change (%/year):",
                   min = -60,
                   max = 10,
-                  value = -13.3),
+                  value = -13.3) %>% sliderValue(live=TRUE, delayed=TRUE),
 	"All cause pneumonia"=
 	   sliderInput("pct.decline.yr",
                   "True vaccine-associated change (%/year):",
                   min = -60,
                   max = 10,
-                  value = 0.13)
+                  value = 0.13) %>% sliderValue(live=TRUE, delayed=TRUE)
 			#actual value for this is 0.13
 		)
 	})	
@@ -58,19 +58,19 @@ output$ui.season.amp<- renderUI({
                   "Strength of seasonality:",
                   min = 0,
                   max = 1,
-                  value = 0.54),
+                  value = 0.54) %>% sliderValue(live=TRUE, delayed=TRUE),
 		"Pneumococcal pneumonia (any serotype)"=
 	  sliderInput("season.amp",
                   "Strength of seasonality:",
                   min = 0,
                   max = 1,
-                  value = 0.91),
+                  value = 0.91) %>% sliderValue(live=TRUE, delayed=TRUE),
 	"All cause pneumonia"=
 	 sliderInput("season.amp",
                   "Strength of seasonality:",
                   min = 0,
                   max = 1,
-                  value = 0.86)
+                  value = 0.86) %>% sliderValue(live=TRUE, delayed=TRUE)
 	)
 })	
 
@@ -133,30 +133,57 @@ output$ui.rand.noise<- renderUI({
 ##########################
 #######################
 
-overview <- reactive({
-  n.year.post.PCV <- 		input$years.post.pcv.data      #how many years post-pcv data?
-  n.year.pre.PCV  <-		input$years.pre.pcv.data     #how many years pre-PCV data?
-  n.years.fill <-           	n.year.pre.PCV + n.year.post.PCV 
+liveInput = reactiveValues(
+  secular.trend.yr=NA,
+  pct.decline.yr=NA,
+  season.amp=NA
+)
 
-  irr.sec.trend.yr <- 1 + (input$secular.trend.yr / 100)
-  irr.vax.yr.vax <- 1 + (input$pct.decline.yr / 100)
-  
+delayedInput = reactiveValues(
+  secular.trend.yr=NA,
+  pct.decline.yr=NA,
+  season.amp=NA
+)
 
-  df = data.frame(t=1:(12 * n.years.fill))
-  vax.change <- df$t - n.year.pre.PCV * 12
+observe({
+  liveInput$secular.trend.yr <- input$secular.trend.yr$live
+  delayedInput$secular.trend.yr <- input$secular.trend.yr$delayed
+})
+
+observe({
+  liveInput$secular.trend.yr <- input$secular.trend.yr$live
+  delayedInput$secular.trend.yr <- input$secular.trend.yr$delayed
+  liveInput$pct.decline.yr <- input$pct.decline.yr$live
+  delayedInput$pct.decline.yr <- input$pct.decline.yr$delayed
+  liveInput$season.amp <- input$season.amp$live
+  delayedInput$season.amp <- input$season.amp$delayed
+})
+
+overview.data <- function(years.pre, years.post, trend.secular, trend.vax, season.amp, mean.cases) {
+  irr.secular <- 1 + (trend.secular / 100)
+  irr.vax <- 1 + (trend.vax / 100)
+
+  df = data.frame(t=1:(12 * (years.pre + years.post)))
+  vax.change <- df$t - years.pre * 12
   vax.change [ vax.change < 0 ] <- 0
-  season.component <- input$season.amp * cos(2 * pi * df$t / 12 + pi)
-  constant.component <- log(irr.sec.trend.yr) / 12 * df$t + log(irr.vax.yr.vax)/12 * vax.change
-
+  season.component <- season.amp * cos(2 * pi * df$t / 12 + pi)
+  constant.component <- log(irr.secular) / 12 * df$t + log(irr.vax)/12 * vax.change
+  
   constant.exp = exp(constant.component)
   
-  beta0 <- log(input$mean.cases.n) - (mean(constant.component) + mean(season.component))
-
-  df$cases.min <- constant.exp / exp(input$season.amp) * exp(beta0)
-  df$cases.max <- constant.exp * exp(input$season.amp) * exp(beta0)
+  beta0 <- log(mean.cases) - (mean(constant.component) + mean(season.component))
+  
+  df$cases.min <- constant.exp / exp(season.amp) * exp(beta0)
+  df$cases.max <- constant.exp * exp(season.amp) * exp(beta0)
   df$cases <- constant.exp * exp(season.component) * exp(beta0)
   
   return(df)
+}
+
+overview <- reactive({
+  return(overview.data(input$years.pre.pcv.data, input$years.post.pcv.data, 
+                       delayedInput$secular.trend.yr, delayedInput$pct.decline.yr, 
+                       delayedInput$season.amp, input$mean.cases.n))
 })
 
 analysis <- reactive({
@@ -164,8 +191,8 @@ analysis <- reactive({
   n.year.pre.PCV  <-		input$years.pre.pcv.data     #how many years pre-PCV data?
   n.years.fill <-           	n.year.pre.PCV + n.year.post.PCV 
   year.introduce.vax.fill.vec<- n.years.fill -n.year.post.PCV  #What year is vaccine introduced?
-  irr.yr.vax                 <-  1+(input$pct.decline.yr/100)
-  irr.sec.trend.yr			<- 1 + (input$secular.trend.yr/100)
+  irr.yr.vax                 <-  1+(delayedInput$pct.decline.yr/100)
+  irr.sec.trend.yr			<- 1 + (delayedInput$secular.trend.yr/100)
   vax.change.coeff.fill.vec <-   irr.yr.vax #What is the IRR per year?
   std.dev.year.fill.vec <-       input$year.noise #Variation between years
   mean.cases.vec<-               input$mean.cases.n  #What is the intercept (cases/month)?
@@ -202,7 +229,7 @@ analysis <- reactive({
     t <- 1:(12*n.years)
     
     #Seasonal variation
-    season.component <-  input$season.amp * cos(2*3.14159*t/12+3.14159)
+    season.component <-  delayedInput$season.amp * cos(2*3.14159*t/12+3.14159)
     
     #Year to year variation in mean levels, centered at mean with a certain stddev
     year.index=1:n.years
@@ -294,7 +321,7 @@ analysis <- reactive({
 })
 
 output$distPlot <- renderPlotly({
-  if (is.null(input$pct.decline.yr)){
+  if (is.null(delayedInput$pct.decline.yr)){
 	  return()
   }
   
@@ -324,7 +351,7 @@ output$distPlot <- renderPlotly({
 })
 
 output$evalPlot <- renderPlot({
-  if (is.null(input$pct.decline.yr)){
+  if (is.null(delayedInput$pct.decline.yr)){
     return()}
   
   m <- rbind(c(1, 2))
@@ -334,8 +361,8 @@ output$evalPlot <- renderPlot({
   d <- density(analysis()$est.pct.change.vax) # returns the density data 
   plot(d, bty="l",xlim=c(-90, 100), main="", lwd=2, col="red")
   abline(v=0,lty="dotted",col="darkgray")
-  abline(v=input$pct.decline.yr,lty="dashed",col="darkblue")
-  text(input$pct.decline.yr,0.0,"Actual change (%)",srt=270, adj=c(1.0,1.00), cex=1.5 , col="darkgray")
+  abline(v=delayedInput$pct.decline.yr,lty="dashed",col="darkblue")
+  text(delayedInput$pct.decline.yr,0.0,"Actual change (%)",srt=270, adj=c(1.0,1.00), cex=1.5 , col="darkgray")
   
   title(main="Estimates of % change from different simulations", cex.main=1.5)
   
@@ -345,4 +372,26 @@ output$evalPlot <- renderPlot({
   text(2,9, analysis()$ci.vector , cex=3,adj=c(0, 0.5), xpd=NA ) #Adds the median of the density plot
   text(2,8, analysis()$std.dev.vector , cex=3,adj=c(0, 0.5), xpd=NA ) #Adds the median of the density plot
 })
+
+observe({
+  # Hold of if any values are NULL (it means we're still setting up the UI)
+  years.post <- input$years.post.pcv.data
+  years.pre <- input$years.pre.pcv.data 
+  trend.secular <- liveInput$secular.trend.yr
+  trend.vax <- liveInput$pct.decline.yr
+  season.amp <- liveInput$season.amp
+  mean.cases <- input$mean.cases.n
+  if (is.null(years.post) || is.null(years.pre) || is.null(trend.secular) || is.null(trend.vax) || is.null(season.amp) || is.null(mean.cases)) {
+    return()
+  }
+  data <- overview.data(years.pre, years.post, trend.secular, trend.vax, season.amp, mean.cases)
+  plotlyProxy("distPlot", session) %>%
+    plotlyProxyInvoke(
+      "restyle", 
+      "y",
+      list(data$cases.min, data$cases, data$cases.max),
+      list(1, 2, 3)
+    )
+})
+
 })
