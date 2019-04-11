@@ -133,6 +133,32 @@ output$ui.rand.noise<- renderUI({
 ##########################
 #######################
 
+overview <- reactive({
+  n.year.post.PCV <- 		input$years.post.pcv.data      #how many years post-pcv data?
+  n.year.pre.PCV  <-		input$years.pre.pcv.data     #how many years pre-PCV data?
+  n.years.fill <-           	n.year.pre.PCV + n.year.post.PCV 
+
+  irr.sec.trend.yr <- 1 + (input$secular.trend.yr / 100)
+  irr.vax.yr.vax <- 1 + (input$pct.decline.yr / 100)
+  
+
+  df = data.frame(t=1:(12 * n.years.fill))
+  vax.change <- df$t - n.year.pre.PCV * 12
+  vax.change [ vax.change < 0 ] <- 0
+  season.component <- input$season.amp * cos(2 * pi * df$t / 12 + pi)
+  constant.component <- log(irr.sec.trend.yr) / 12 * df$t + log(irr.vax.yr.vax)/12 * vax.change
+
+  constant.exp = exp(constant.component)
+  
+  beta0 <- log(input$mean.cases.n) - (mean(constant.component) + mean(season.component))
+
+  df$cases.min <- constant.exp / exp(input$season.amp) * exp(beta0)
+  df$cases.max <- constant.exp * exp(input$season.amp) * exp(beta0)
+  df$cases <- constant.exp * exp(season.component) * exp(beta0)
+  
+  return(df)
+})
+
 analysis <- reactive({
   n.year.post.PCV <- 		input$years.post.pcv.data      #how many years post-pcv data?
   n.year.pre.PCV  <-		input$years.pre.pcv.data     #how many years pre-PCV data?
@@ -273,6 +299,8 @@ output$distPlot <- renderPlotly({
   }
   
   sim.data = analysis()$sim.data
+  overview = overview()
+
   ymaxval<- max(sim.data$cases)
   
   plot_ly(sim.data, x = ~month, y = ~cases) %>%
@@ -289,7 +317,10 @@ output$distPlot <- renderPlotly({
         nticks=11,
         title="Cases"
       )
-    )
+    ) %>%
+    add_lines(data=overview(), x=~t, y=~cases) %>%
+    add_lines(data=overview(), x=~t, y=~cases.min) %>%
+    add_lines(data=overview(), x=~t, y=~cases.max)
 })
 
 output$evalPlot <- renderPlot({
