@@ -1,3 +1,5 @@
+library(htmltools)
+
 updateDescendants <- function(tag, update) {
   # First check tag
   if (class(tag) != "shiny.tag") {

@@ -12,6 +12,8 @@ library(lme4)
 library(plotly)
 # Define server logic required to draw a histogram
 
+source("global.R")
+
 shinyServer(function(input, output, clientData, session) {
 
 ###################PART OF THE PROGRAM THAT RERUNS WHEN SLIDERS CHANGE

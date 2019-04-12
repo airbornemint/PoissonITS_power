@@ -1,6 +1,8 @@
 library(shiny)
 library(plotly)
 
+source("global.R")
+
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
 
